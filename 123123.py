@@ -6,59 +6,61 @@ import random
 
 st.set_page_config(page_title="91 AI Ultra", layout="centered")
 
-if 'ready' not in st.session_state:
-    st.session_state.ready = False
+# This keeps the model active after training
+if 'ai_model' not in st.session_state:
+    st.session_state.ai_model = None
 
-st.title("🔥 91 AI Ultra-Predictor (90% Goal)")
+st.title("🔥 91 AI Ultra-Predictor")
 
 file = st.file_uploader("Upload Qus.csv", type="csv")
 
 if file:
     df = pd.read_csv(file)
     if 'content' in df.columns:
-        # 1. Deep Memory: Look at the last 5 numbers instead of 2
+        # Deep Memory: Look at the last 5 numbers
         for i in range(1, 6):
             df[f'p{i}'] = df['content'].shift(i)
         df = df.dropna()
         
-        # 2. Features and Target
         X = df[['p1', 'p2', 'p3', 'p4', 'p5']]
         y = df['content']
 
-        if st.button("Deep Train (Target 90%)"):
-            # Using a stronger model (Gradient Boosting) for complex patterns
+        if st.button("Deep Train Now"):
             model = GradientBoostingClassifier(n_estimators=200, learning_rate=0.1)
             model.fit(X, y)
             
-            # 50 Question Self-Test
+            # Show the accuracy but don't hide the game
             tests = random.sample(range(len(X)), 50)
             score = 0
             for i in tests:
-                # Predicting the exact number (0-9)
                 if model.predict([X.iloc[i]])[0] == y.iloc[i]:
                     score += 1
             
-            acc = (score / 50) * 100
-            st.session_state.ai = model
-            
-            if acc >= 90:
-                st.session_state.ready = True
-                st.success(f"🎯 EXCELLENT! Accuracy: {acc}%")
-            else:
-                st.warning(f"Accuracy: {acc}%. To increase, upload more rows to Qus.csv (Target: 15,000+ rows).")
+            st.session_state.ai_model = model
+            st.success(f"Model Ready! Accuracy: {(score / 50) * 100}%")
     else:
         st.error("Header must be 'content'")
 
-if st.session_state.ready:
+# THE FIX: This box will now appear as soon as the model is trained!
+if st.session_state.ai_model is not None:
     st.divider()
-    st.header("🎮 Real Game Prediction")
-    inputs = st.text_input("Enter last 5 numbers (comma separated, e.g. 1,5,0,2,9)")
+    st.header("🎮 Get Next Prediction")
+    st.write("Type the last 5 game results below:")
     
-    if st.button("Predict Next"):
+    user_input = st.text_input("Example: 1, 5, 0, 2, 9", "")
+    
+    if st.button("Predict Next Result"):
         try:
-            val_list = [int(x.strip()) for x in inputs.split(',')]
-            res = st.session_state.ai.predict([val_list])[0]
-            size = "SMALL" if res <= 4 else "BIG"
-            st.header(f"Result: {res} ({size})")
+            # Turn your typing into a list of numbers
+            val_list = [int(x.strip()) for x in user_input.split(',')]
+            
+            if len(val_list) == 5:
+                prediction = st.session_state.ai_model.predict([val_list])[0]
+                size = "SMALL (0-4)" if prediction <= 4 else "BIG (5-9)"
+                
+                st.subheader(f"🎯 Next Number: {prediction}")
+                st.header(f"✨ Result: {size}")
+            else:
+                st.warning("Please enter exactly 5 numbers.")
         except:
-            st.error("Please enter exactly 5 numbers separated by commas.")
+            st.error("Use commas between numbers (Example: 1,2,3,4,5)")
