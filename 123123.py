@@ -4,63 +4,99 @@ import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 import random
 
-st.set_page_config(page_title="91 AI Ultra", layout="centered")
+st.set_page_config(page_title="91 AI Tracker", layout="wide")
 
-# This keeps the model active after training
+# Initialize Session States for Memory
 if 'ai_model' not in st.session_state:
     st.session_state.ai_model = None
+if 'history' not in st.session_state:
+    st.session_state.history = []  # Stores last 20 results
+if 'last_5' not in st.session_state:
+    st.session_state.last_5 = []
+if 'stats' not in st.session_state:
+    st.session_state.stats = {"wins": 0, "loss": 0, "c_win": 0, "c_loss": 0, "max_win": 0, "max_loss": 0}
 
-st.title("🔥 91 AI Ultra-Predictor")
+st.title("🔥 91 AI Tracker & Auto-Predictor")
 
+# 1. Setup Data
 file = st.file_uploader("Upload Qus.csv", type="csv")
-
 if file:
     df = pd.read_csv(file)
     if 'content' in df.columns:
-        # Deep Memory: Look at the last 5 numbers
-        for i in range(1, 6):
-            df[f'p{i}'] = df['content'].shift(i)
-        df = df.dropna()
-        
-        X = df[['p1', 'p2', 'p3', 'p4', 'p5']]
-        y = df['content']
-
-        if st.button("Deep Train Now"):
-            model = GradientBoostingClassifier(n_estimators=200, learning_rate=0.1)
+        if st.button("Train Model"):
+            for i in range(1, 6):
+                df[f'p{i}'] = df['content'].shift(i)
+            df = df.dropna()
+            X = df[['p1', 'p2', 'p3', 'p4', 'p5']]
+            y = df['content']
+            model = GradientBoostingClassifier(n_estimators=100)
             model.fit(X, y)
-            
-            # Show the accuracy but don't hide the game
-            tests = random.sample(range(len(X)), 50)
-            score = 0
-            for i in tests:
-                if model.predict([X.iloc[i]])[0] == y.iloc[i]:
-                    score += 1
-            
             st.session_state.ai_model = model
-            st.success(f"Model Ready! Accuracy: {(score / 50) * 100}%")
-    else:
-        st.error("Header must be 'content'")
+            st.success("Model Trained and Ready!")
 
-# THE FIX: This box will now appear as soon as the model is trained!
-if st.session_state.ai_model is not None:
+# 2. Prediction Engine
+if st.session_state.ai_model:
     st.divider()
-    st.header("🎮 Get Next Prediction")
-    st.write("Type the last 5 game results below:")
     
-    user_input = st.text_input("Example: 1, 5, 0, 2, 9", "")
-    
-    if st.button("Predict Next Result"):
-        try:
-            # Turn your typing into a list of numbers
-            val_list = [int(x.strip()) for x in user_input.split(',')]
-            
-            if len(val_list) == 5:
-                prediction = st.session_state.ai_model.predict([val_list])[0]
-                size = "SMALL (0-4)" if prediction <= 4 else "BIG (5-9)"
+    # Input Section
+    if not st.session_state.last_5:
+        init_input = st.text_input("First Time: Enter last 5 numbers (e.g. 1,1,2,2,5)")
+        if st.button("Set Initial Numbers"):
+            nums = [int(x.strip()) for x in init_input.split(',')]
+            if len(nums) == 5:
+                st.session_state.last_5 = nums
+                st.rerun()
+    else:
+        st.write(f"**Current Window:** {st.session_state.last_5}")
+        new_num = st.number_input("Enter New Game Result (0-9)", 0, 9, key="new_val")
+        
+        if st.button("Submit & Predict Next"):
+            # A. Check Win/Loss of PREVIOUS prediction
+            if 'last_pred_size' in st.session_state:
+                actual_size = "SMALL" if new_num <= 4 else "BIG"
+                if actual_size == st.session_state.last_pred_size:
+                    st.session_state.stats["wins"] += 1
+                    st.session_state.stats["c_win"] += 1
+                    st.session_state.stats["c_loss"] = 0
+                    res_text = "✅ WIN"
+                else:
+                    st.session_state.stats["loss"] += 1
+                    st.session_state.stats["c_loss"] += 1
+                    st.session_state.stats["c_win"] = 0
+                    res_text = "❌ LOSS"
                 
-                st.subheader(f"🎯 Next Number: {prediction}")
-                st.header(f"✨ Result: {size}")
-            else:
-                st.warning("Please enter exactly 5 numbers.")
-        except:
-            st.error("Use commas between numbers (Example: 1,2,3,4,5)")
+                # Update Max Streaks
+                st.session_state.stats["max_win"] = max(st.session_state.stats["max_win"], st.session_state.stats["c_win"])
+                st.session_state.stats["max_loss"] = max(st.session_state.stats["max_loss"], st.session_state.stats["c_loss"])
+                
+                # Update History List
+                st.session_state.history.insert(0, {"Result": new_num, "Size": actual_size, "Status": res_text})
+                if len(st.session_state.history) > 20:
+                    st.session_state.history.pop()
+
+            # B. Update the 5-number window (Remove first, add new)
+            st.session_state.last_5.pop(0)
+            st.session_state.last_5.append(new_num)
+            
+            # C. Predict for the NEXT game
+            pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
+            st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
+            st.session_state.next_pred_num = pred
+            st.rerun()
+
+    # 3. Display Results
+    if 'next_pred_num' in st.session_state:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("NEXT PREDICTION", f"{st.session_state.next_pred_num}")
+        c2.metric("SIZE", st.session_state.last_pred_size)
+        c3.metric("STREAK", f"W:{st.session_state.stats['c_win']} | L:{st.session_state.stats['c_loss']}")
+
+        st.subheader("📊 Streak Records")
+        st.write(f"🔥 Max Consecutive Wins: **{st.session_state.stats['max_win']}** | ❄️ Max Consecutive Loss: **{st.session_state.stats['max_loss']}**")
+
+        st.subheader("📜 Last 20 Games History")
+        st.table(pd.DataFrame(st.session_state.history))
+
+if st.button("Reset All Data"):
+    st.session_state.clear()
+    st.rerun()
