@@ -50,10 +50,14 @@ st.markdown("""
     
     /* Stats Styling */
     .stats-text {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: bold;
         text-align: center;
-        margin-bottom: -5px;
+        color: #FFFFFF;
+        background-color: #333333;
+        padding: 5px;
+        border-radius: 5px;
+        margin-bottom: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -66,13 +70,12 @@ if 'stats' not in st.session_state:
     st.session_state.stats = {"wins": 0, "loss": 0, "win_streak": 0, "loss_streak": 0}
 if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
-# --- 1. PREDICTION & FULL STATS (TOP) ---
+# --- 1. PREDICTION & OVERALL STATS (TOP) ---
 if 'next_num' in st.session_state:
-    # Always show Total Counts and Streaks
+    # Always show Overall Win and Loss Counts
     st.markdown(f"""
         <div class="stats-text">
-            🏆 Total Wins: {st.session_state.stats['wins']} | ❌ Total Loss: {st.session_state.stats['loss']}<br>
-            🔥 Streak: {st.session_state.stats['win_streak']} | ❄️ Streak: {st.session_state.stats['loss_streak']}
+            🏆 Win={st.session_state.stats['wins']} | ❌ Loss={st.session_state.stats['loss']}
         </div>
     """, unsafe_allow_html=True)
     
