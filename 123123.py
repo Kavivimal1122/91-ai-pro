@@ -11,7 +11,6 @@ st.set_page_config(page_title="91 AI Pro", layout="centered")
 # 2. Custom CSS for Solid Blocks and Zero Padding
 st.markdown("""
     <style>
-    /* Force everything to fit on one mobile screen */
     .block-container { padding-top: 0.5rem; padding-bottom: 0rem; padding-left: 0.5rem; padding-right: 0.5rem; }
     
     /* Result Box */
@@ -23,7 +22,7 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* Solid Block Buttons with HUGE White Numbers */
+    /* ALL BUTTONS SOLID BLOCK */
     div.stButton > button {
         width: 100% !important;
         height: 65px !important;
@@ -34,18 +33,31 @@ st.markdown("""
         border: 1px solid white !important;
         margin: 0px !important;
     }
-    
-    /* Block Color: Green (0-4) */
-    div.stButton > button[key^="btn_0"], div.stButton > button[key^="btn_1"], 
-    div.stButton > button[key^="btn_2"], div.stButton > button[key^="btn_3"], 
-    div.stButton > button[key^="btn_4"] { background-color: #28a745 !important; }
-    
-    /* Block Color: Red (5-9) */
-    div.stButton > button[key^="btn_5"], div.stButton > button[key^="btn_6"], 
-    div.stButton > button[key^="btn_7"], div.stButton > button[key^="btn_8"], 
-    div.stButton > button[key^="btn_9"] { background-color: #dc3545 !important; }
 
-    /* Hide Streamlit elements to save space */
+    /* GREEN BLOCK (0-4) */
+    div.stButton:nth-of-type(1) button,
+    div.stButton:nth-of-type(2) button,
+    div.stButton:nth-of-type(3) button,
+    div.stButton:nth-of-type(4) button,
+    div.stButton:nth-of-type(5) button {
+        background-color: #28a745 !important;
+    }
+
+    /* RED BLOCK (5-9) */
+    div.stButton:nth-of-type(6) button,
+    div.stButton:nth-of-type(7) button,
+    div.stButton:nth-of-type(8) button,
+    div.stButton:nth-of-type(9) button,
+    div.stButton:nth-of-type(10) button {
+        background-color: #dc3545 !important;
+    }
+
+    /* RESET BUTTON */
+    div.stButton:last-child button {
+        background-color: #343a40 !important;
+        color: white !important;
+    }
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -86,16 +98,14 @@ elif not st.session_state.last_5:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-# --- 3. THE DIALER (CENTER - NO SCROLL) ---
+# --- 3. THE DIALER ---
 else:
     new_num = None
-    # 3x3 Grid
     for row in [[1, 2, 3], [4, 5, 6], [7, 8, 9]]:
         cols = st.columns(3)
         for i, n in enumerate(row):
             if cols[i].button(str(n), key=f"btn_{n}"): new_num = n
             
-    # Bottom Row for 0
     c1, c2, c3 = st.columns(3)
     if c2.button("0", key="btn_0"): new_num = 0
 
@@ -112,7 +122,6 @@ else:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-    # Reset at bottom
     if st.button("RESET", key="reset_app"):
         st.session_state.clear()
         st.rerun()
