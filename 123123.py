@@ -8,7 +8,7 @@ import io
 # 1. Compact Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS (FIXED BUTTON COLORS PROPERLY)
+# 2. Custom CSS
 st.markdown("""
     <style>
     .block-container { 
@@ -26,7 +26,6 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* ALL BUTTONS BASE STYLE */
     div.stButton > button {
         width: 100% !important;
         height: 65px !important;
@@ -36,15 +35,13 @@ st.markdown("""
         color: white !important;       
         border: none !important;
         margin: 4px 0px !important;
-        background-color: #1f1f1f !important;  /* Default block color */
+        background-color: #1f1f1f !important;
     }
 
-    /* Hover Effect */
     div.stButton > button:hover {
         opacity: 0.85 !important;
     }
 
-    /* Hide Streamlit UI */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -60,6 +57,17 @@ if 'last_5' not in st.session_state:
     st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
     st.session_state.stats = {"wins": 0, "loss": 0}
+if 'accuracy' not in st.session_state:
+    st.session_state.accuracy = None
+
+# --- SHOW STATS ---
+st.markdown(f"""
+### 🏆 Wins: {st.session_state.stats['wins']}  
+### ❌ Loss: {st.session_state.stats['loss']}
+""")
+
+if st.session_state.accuracy is not None:
+    st.markdown(f"### 🎯 Training Accuracy: {st.session_state.accuracy:.2f}%")
 
 # --- 1. PREDICTION ---
 if 'next_num' in st.session_state:
@@ -83,10 +91,19 @@ if st.session_state.ai_model is None:
         for i in range(1, 6): 
             df[f'p{i}'] = df['content'].shift(i)
         df = df.dropna()
-        model = GradientBoostingClassifier(n_estimators=100).fit(
-            df[['p1','p2','p3','p4','p5']], df['content']
-        )
+
+        X = df[['p1','p2','p3','p4','p5']]
+        y = df['content']
+
+        model = GradientBoostingClassifier(n_estimators=100)
+        model.fit(X, y)
+
+        # Calculate Training Accuracy
+        accuracy = model.score(X, y) * 100
+
         st.session_state.ai_model = model
+        st.session_state.accuracy = accuracy
+
         st.rerun()
 
 elif not st.session_state.last_5:
@@ -106,30 +123,30 @@ elif not st.session_state.last_5:
 else:
     new_num = None
 
-    # Row 1
     col1, col2, col3 = st.columns(3)
     if col1.button("1", key="btn_1"): new_num = 1
     if col2.button("2", key="btn_2"): new_num = 2
     if col3.button("3", key="btn_3"): new_num = 3
 
-    # Row 2
     col1, col2, col3 = st.columns(3)
     if col1.button("4", key="btn_4"): new_num = 4
     if col2.button("5", key="btn_5"): new_num = 5
     if col3.button("6", key="btn_6"): new_num = 6
 
-    # Row 3
     col1, col2, col3 = st.columns(3)
     if col1.button("7", key="btn_7"): new_num = 7
     if col2.button("8", key="btn_8"): new_num = 8
     if col3.button("9", key="btn_9"): new_num = 9
 
-    # Centered 0
     col1, col2, col3 = st.columns(3)
     if col2.button("0", key="btn_0"): new_num = 0
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
+
+        # Save history (keep only last 20)
+        st.session_state.history.append(new_num)
+        st.session_state.history = st.session_state.history[-20:]
 
         if actual_size == st.session_state.last_pred_size:
             st.session_state.stats["wins"] += 1
@@ -153,3 +170,8 @@ else:
     if st.button("RESET", key="reset_app"):
         st.session_state.clear()
         st.rerun()
+
+# --- SHOW LAST 20 HISTORY ---
+if st.session_state.history:
+    st.markdown("## 📜 Last 20 Results")
+    st.write(st.session_state.history[::-1])
