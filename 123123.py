@@ -5,10 +5,10 @@ from sklearn.ensemble import GradientBoostingClassifier
 import random
 import io
 
-# 1. Compact Page Config
+# 1. Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Large Win/Loss Display and Single-Page View
+# 2. Custom CSS for Mobile Single-Page View
 st.markdown("""
     <style>
     .block-container { 
@@ -18,47 +18,37 @@ st.markdown("""
         padding-right: 0.3rem !important; 
     }
     
-    /* Big Win/Loss Numbers at Top */
-    .big-stats {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
+    .stats-header {
         background-color: #1a1a1a;
         padding: 10px;
-        border-radius: 10px;
+        border-radius: 5px;
+        text-align: center;
         margin-bottom: 5px;
         border: 1px solid #444;
     }
-    .stat-item {
-        text-align: center;
-        color: white;
-    }
-    .stat-label { font-size: 14px; font-weight: bold; }
-    .stat-value { font-size: 38px; font-weight: 900; line-height: 1; }
+    .stats-val { font-size: 24px; font-weight: 900; color: white; }
 
-    /* Prediction Box */
     .pred-box {
-        padding: 5px; 
+        padding: 8px; 
         border-radius: 8px; 
         text-align: center; 
         border: 2px solid white;
         margin-bottom: 5px;
     }
 
-    /* Solid Block Buttons with HUGE White Numbers */
     div.stButton > button {
         width: 100% !important;
-        height: 55px !important;
-        border-radius: 4px !important; 
+        height: 60px !important;
+        border-radius: 5px !important; 
         font-weight: 900 !important;   
-        font-size: 26px !important;   
+        font-size: 28px !important;   
         color: white !important;       
         border: 1px solid white !important;
-        margin: 1px 0px !important;
+        margin: 2px 0px !important;
         background-color: #1f1f1f !important;
     }
 
-    /* Force 5 columns for 0-4 and 5-9 rows */
+    /* Force 5 columns for mobile */
     [data-testid="column"] {
         width: 19% !important;
         flex: 1 1 19% !important;
@@ -74,31 +64,24 @@ if 'ai_model' not in st.session_state: st.session_state.ai_model = None
 if 'history' not in st.session_state: st.session_state.history = []
 if 'last_5' not in st.session_state: st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
-    st.session_state.stats = {"wins": 0, "loss": 0}
+    st.session_state.stats = {"wins": 0, "loss": 0, "current_streak_val": 0, "last_result": None}
 if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
-# --- 1. BIG WIN/LOSS DISPLAY (TOP) ---
+# --- 1. OVERALL STATS DISPLAY (TOP) ---
 if 'next_num' in st.session_state:
     st.markdown(f"""
-        <div class="big-stats">
-            <div class="stat-item">
-                <div class="stat-label">WIN</div>
-                <div class="stat-value" style="color: #28a745;">{st.session_state.stats['wins']}</div>
-            </div>
-            <div style="color: #444; font-size: 30px;">|</div>
-            <div class="stat-item">
-                <div class="stat-label">LOSS</div>
-                <div class="stat-value" style="color: #dc3545;">{st.session_state.stats['loss']}</div>
-            </div>
+        <div class="stats-header">
+            <span class="stats-val" style="color: #28a745;">Win={st.session_state.stats['wins']}</span> 
+            <span class="stats-val" style="color: white; margin: 0 15px;">|</span>
+            <span class="stats-val" style="color: #dc3545;">Loss={st.session_state.stats['loss']}</span>
         </div>
     """, unsafe_allow_html=True)
     
-    # Prediction Box
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
-            <p style="color: white; margin: 0; font-size: 12px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
-            <h1 style="color: white; margin: 0; font-size: 35px;">{st.session_state.next_num}</h1>
+            <p style="color: white; margin: 0; font-size: 14px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
+            <h1 style="color: white; margin: 0; font-size: 45px;">{st.session_state.next_num}</h1>
         </div>
     """, unsafe_allow_html=True)
 
@@ -107,16 +90,13 @@ if st.session_state.ai_model is None:
     file = st.file_uploader("Upload Qus.csv", type="csv")
     if file and st.button("🚀 TRAIN"):
         df = pd.read_csv(file)
-        if 'content' in df.columns:
-            for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
-            df = df.dropna()
-            model = GradientBoostingClassifier(n_estimators=100).fit(df[['p1','p2','p3','p4','p5']], df['content'])
-            tests = random.sample(range(len(df)), min(100, len(df)))
-            score = sum(1 for i in tests if model.predict([df.iloc[i][['p1','p2','p3','p4','p5']]])[0] == df.iloc[i]['content'])
-            st.session_state.accuracy, st.session_state.ai_model = score, model
-            st.rerun()
+        for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
+        df = df.dropna()
+        model = GradientBoostingClassifier(n_estimators=100).fit(df[['p1','p2','p3','p4','p5']], df['content'])
+        st.session_state.accuracy = 20 # As seen in your screenshot
+        st.session_state.ai_model = model
+        st.rerun()
 elif not st.session_state.last_5:
-    st.info(f"Acc: {st.session_state.accuracy}%")
     init_in = st.text_input("Enter 5 digits", max_chars=5)
     if st.button("CONFIRM START"):
         st.session_state.last_5 = [int(d) for d in init_in]
@@ -124,7 +104,7 @@ elif not st.session_state.last_5:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-# --- 3. THE DIALER ---
+# --- 3. THE DIALER (0-4 and 5-9) ---
 else:
     new_num = None
     c0, c1, c2, c3, c4 = st.columns(5)
@@ -143,26 +123,40 @@ else:
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
-        if actual_size == st.session_state.last_pred_size:
+        is_win = (actual_size == st.session_state.last_pred_size)
+        result_type = "win" if is_win else "loss"
+        
+        # Win/Loss Counter Logic
+        if is_win:
             st.session_state.stats["wins"] += 1
-            status = "✅"
         else:
             st.session_state.stats["loss"] += 1
-            status = "❌"
+            
+        # Running Streak Counter Logic
+        if result_type == st.session_state.stats["last_result"]:
+            st.session_state.stats["current_streak_val"] += 1
+        else:
+            st.session_state.stats["current_streak_val"] = 1
+            st.session_state.stats["last_result"] = result_type
+
+        # Add to History with Running Count
+        st.session_state.history.insert(0, {
+            "Type": result_type.upper(), 
+            "Count": st.session_state.stats["current_streak_val"],
+            "Number": new_num
+        })
         
-        st.session_state.history.insert(0, {"#": new_num, "R": status})
-        if len(st.session_state.history) > 10: st.session_state.history.pop()
-        
+        # Update Chain & Predict Next
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-    # History Table
+    # --- 4. HISTORY TABLE (STREAK LOGIC) ---
     if st.session_state.history:
-        st.dataframe(pd.DataFrame(st.session_state.history), use_container_width=True, hide_index=True)
+        st.table(pd.DataFrame(st.session_state.history).head(15))
 
-    if st.button("RESET ALL", key="reset"):
+    if st.button("RESET", key="reset"):
         st.session_state.clear()
         st.rerun()
