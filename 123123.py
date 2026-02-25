@@ -60,7 +60,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Session States
+# --- 3. FIX: INITIALIZE SESSION STATES (MEMORY) ---
 if 'ai_model' not in st.session_state: st.session_state.ai_model = None
 if 'history' not in st.session_state: st.session_state.history = []
 if 'last_5' not in st.session_state: st.session_state.last_5 = []
@@ -72,8 +72,8 @@ if 'stats' not in st.session_state:
     }
 if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
-# --- 1. HUGE MAX STREAK DISPLAY (TOP) ---
-if 'next_num' in st.session_state:
+# --- 4. PREDICTION & STATS DISPLAY ---
+if 'next_num' in st.session_state and st.session_state.ai_model is not None:
     st.markdown(f"""
         <div class="max-streak-container">
             <div style="display: flex; justify-content: space-around;">
@@ -101,60 +101,59 @@ if 'next_num' in st.session_state:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 2. STARTUP LOGIC ---
+# --- 5. SETUP WORKFLOW (UPLOAD -> TRAIN -> START) ---
 if st.session_state.ai_model is None:
     file = st.file_uploader("Upload Qus.csv", type="csv")
-    if file and st.button("🚀 TRAIN HIGH-ACC AI"):
-        df = pd.read_csv(file)
-        if 'content' in df.columns:
-            # Feature Engineering: Creating Lags for better pattern recognition
-            for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
-            df = df.dropna()
-            
-            X = df[['p1','p2','p3','p4','p5']]
-            y = df['content']
-            
-            # Advanced Gradient Boosting Setup
-            model = GradientBoostingClassifier(
-                n_estimators=1000,      # More trees for complex patterns
-                learning_rate=0.02,     # Careful learning
-                max_depth=7,            # Deeper relationship finding
-                subsample=0.8,          # Better generalization
-                random_state=42
-            )
-            model.fit(X, y)
-            
-            # Simple internal check to show score
-            st.session_state.accuracy = int(model.score(X, y) * 100)
-            st.session_state.ai_model = model
-            st.rerun()
+    if file:
+        if st.button("🚀 TRAIN HIGH-ACC AI"):
+            df = pd.read_csv(file)
+            if 'content' in df.columns:
+                # Engineering Lags for pattern recognition
+                for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
+                df = df.dropna()
+                
+                # Advanced Model Setup
+                model = GradientBoostingClassifier(
+                    n_estimators=1000, 
+                    learning_rate=0.02, 
+                    max_depth=7, 
+                    subsample=0.8, 
+                    random_state=42
+                )
+                model.fit(df[['p1','p2','p3','p4','p5']], df['content'])
+                
+                st.session_state.accuracy = int(model.score(df[['p1','p2','p3','p4','p5']], df['content']) * 100)
+                st.session_state.ai_model = model
+                st.success("Training Complete! Now enter starting numbers.")
+                st.rerun()
 
 elif not st.session_state.last_5:
-    st.info(f"AI Training Confidence: {st.session_state.accuracy}%")
-    init_in = st.text_input("Enter 5 digits", max_chars=5)
-    if st.button("CONFIRM START"):
-        st.session_state.last_5 = [int(d) for d in init_in]
-        pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
-        st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
-        st.rerun()
+    st.info(f"AI Confidence: {st.session_state.accuracy}%")
+    init_in = st.text_input("Enter 5 digits (Example: 35125)", max_chars=5)
+    if st.button("CONFIRM & START DIALER"):
+        if len(init_in) == 5:
+            st.session_state.last_5 = [int(d) for d in init_in]
+            pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
+            st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
+            st.rerun()
 
-# --- 3. THE DIALER (0-4 and 5-9) ---
+# --- 6. THE DIALER ---
 else:
     new_num = None
-    c0, c1, c2, c3, c4 = st.columns(5)
+    row1 = st.columns(5)
     for i in range(5):
-        if eval(f"c{i}").button(str(i), key=f"btn_{i}"): new_num = i
+        if row1[i].button(str(i), key=f"btn_{i}"): new_num = i
     
-    c5, c6, c7, c8, c9 = st.columns(5)
+    row2 = st.columns(5)
     for i in range(5, 10):
-        if eval(f"c{i}").button(str(i), key=f"btn_{i}"): new_num = i
+        if row2[i].button(str(i), key=f"btn_{i}"): new_num = i
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
         is_win = (actual_size == st.session_state.last_pred_size)
         result_type = "win" if is_win else "loss"
         
-        # Stats update
+        # Streak and Stat Updates
         if is_win: st.session_state.stats["wins"] += 1
         else: st.session_state.stats["loss"] += 1
             
@@ -165,12 +164,8 @@ else:
             st.session_state.stats["last_result"] = result_type
 
         # Update Maximums
-        if result_type == "win":
-            st.session_state.stats["max_win_streak"] = max(st.session_state.stats["max_win_streak"], st.session_state.stats["current_streak_val"])
-        else:
-            st.session_state.stats["max_loss_streak"] = max(st.session_state.stats["max_loss_streak"], st.session_state.stats["current_streak_val"])
+        st.session_state.stats[f"max_{result_type}_streak"] = max(st.session_state.stats[f"max_{result_type}_streak"], st.session_state.stats["current_streak_val"])
 
-        # History and Pred update
         st.session_state.history.insert(0, {"Type": result_type.upper(), "Count": st.session_state.stats["current_streak_val"], "#": new_num})
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
@@ -181,6 +176,6 @@ else:
     if st.session_state.history:
         st.table(pd.DataFrame(st.session_state.history).head(10))
 
-    if st.button("RESET", key="reset"):
+    if st.button("RESET"):
         st.session_state.clear()
         st.rerun()
