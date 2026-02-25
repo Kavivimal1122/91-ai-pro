@@ -51,6 +51,12 @@ st.markdown("""
         color: white !important;
     }
 
+    /* Ensure RESET and other functional buttons are also block colored with white text */
+    div.stButton > button {
+        background-color: #333 !important;
+        color: white !important;
+    }
+
     /* Hide Streamlit elements to save space */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
