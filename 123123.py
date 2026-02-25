@@ -26,6 +26,7 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
+    /* ALL BUTTONS BASE STYLE */
     div.stButton > button {
         width: 100% !important;
         height: 65px !important;
@@ -35,7 +36,7 @@ st.markdown("""
         color: white !important;       
         border: none !important;
         margin: 4px 0px !important;
-        background-color: #1f1f1f !important;
+        background-color: #1f1f1f !important;  /* Default block color */
     }
 
     div.stButton > button:hover {
@@ -56,21 +57,15 @@ if 'history' not in st.session_state:
 if 'last_5' not in st.session_state: 
     st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
-    st.session_state.stats = {"wins": 0, "loss": 0}
+    st.session_state.stats = {"wins": 0, "loss": 0, "win_streak": 0, "loss_streak": 0}
 if 'accuracy' not in st.session_state:
-    st.session_state.accuracy = None
+    st.session_state.accuracy = 0
 
-# --- SHOW STATS ---
-st.markdown(f"""
-### 🏆 Wins: {st.session_state.stats['wins']}  
-### ❌ Loss: {st.session_state.stats['loss']}
-""")
-
-if st.session_state.accuracy is not None:
-    st.markdown(f"### 🎯 Training Accuracy: {st.session_state.accuracy:.2f}%")
-
-# --- 1. PREDICTION ---
+# --- 1. PREDICTION & STREAKS (TOP) ---
 if 'next_num' in st.session_state:
+    # POINT 1: WIN/LOSS STREAK DISPLAY
+    st.write(f"🔥 Consecutive Wins: {st.session_state.stats['win_streak']} | ❄️ Consecutive Loss: {st.session_state.stats['loss_streak']}")
+    
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
@@ -91,87 +86,78 @@ if st.session_state.ai_model is None:
         for i in range(1, 6): 
             df[f'p{i}'] = df['content'].shift(i)
         df = df.dropna()
-
-        X = df[['p1','p2','p3','p4','p5']]
-        y = df['content']
-
-        model = GradientBoostingClassifier(n_estimators=100)
-        model.fit(X, y)
-
-        # Calculate Training Accuracy
-        accuracy = model.score(X, y) * 100
-
+        model = GradientBoostingClassifier(n_estimators=100).fit(
+            df[['p1','p2','p3','p4','p5']], df['content']
+        )
+        # POINT 2: ACCURACY % CALCULATION
+        tests = random.sample(range(len(df)), 100)
+        score = sum(1 for i in tests if model.predict([df.iloc[i][['p1','p2','p3','p4','p5']]])[0] == df.iloc[i]['content'])
+        st.session_state.accuracy = score
         st.session_state.ai_model = model
-        st.session_state.accuracy = accuracy
-
         st.rerun()
 
 elif not st.session_state.last_5:
+    # POINT 2: SHOW ACCURACY
+    st.info(f"Training Accuracy: {st.session_state.accuracy}%")
     init_in = st.text_input("Enter 5 digits (e.g. 35125)", max_chars=5)
     if st.button("CONFIRM"):
         st.session_state.last_5 = [int(d) for d in init_in]
-        pred = st.session_state.ai_model.predict(
-            [st.session_state.last_5]
-        )[0]
+        pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num = pred
-        st.session_state.last_pred_size = (
-            "SMALL" if pred <= 4 else "BIG"
-        )
+        st.session_state.last_pred_size = ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
 # --- 3. THE DIALER ---
 else:
     new_num = None
-
     col1, col2, col3 = st.columns(3)
     if col1.button("1", key="btn_1"): new_num = 1
     if col2.button("2", key="btn_2"): new_num = 2
     if col3.button("3", key="btn_3"): new_num = 3
-
     col1, col2, col3 = st.columns(3)
     if col1.button("4", key="btn_4"): new_num = 4
     if col2.button("5", key="btn_5"): new_num = 5
     if col3.button("6", key="btn_6"): new_num = 6
-
     col1, col2, col3 = st.columns(3)
     if col1.button("7", key="btn_7"): new_num = 7
     if col2.button("8", key="btn_8"): new_num = 8
     if col3.button("9", key="btn_9"): new_num = 9
-
     col1, col2, col3 = st.columns(3)
     if col2.button("0", key="btn_0"): new_num = 0
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
 
-        # Save history (keep only last 20)
-        st.session_state.history.append(new_num)
-        st.session_state.history = st.session_state.history[-20:]
-
+        # POINT 1: STREAK LOGIC
         if actual_size == st.session_state.last_pred_size:
             st.session_state.stats["wins"] += 1
+            st.session_state.stats["win_streak"] += 1
+            st.session_state.stats["loss_streak"] = 0
+            status = "✅ WIN"
         else:
             st.session_state.stats["loss"] += 1
+            st.session_state.stats["loss_streak"] += 1
+            st.session_state.stats["win_streak"] = 0
+            status = "❌ LOSS"
+        
+        # POINT 3: HISTORY LOGIC (stores last 20)
+        st.session_state.history.insert(0, {"Number": new_num, "Result": status})
+        if len(st.session_state.history) > 20:
+            st.session_state.history.pop()
         
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
-
-        pred = st.session_state.ai_model.predict(
-            [st.session_state.last_5]
-        )[0]
-
+        pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num = pred
-        st.session_state.last_pred_size = (
-            "SMALL" if pred <= 4 else "BIG"
-        )
-
+        st.session_state.last_pred_size = ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
+
+    # POINT 3: DISPLAY HISTORY TABLE
+    if st.session_state.history:
+        st.divider()
+        st.subheader("📜 Last 20 History")
+        st.table(pd.DataFrame(st.session_state.history))
 
     if st.button("RESET", key="reset_app"):
         st.session_state.clear()
         st.rerun()
-
-# --- SHOW LAST 20 HISTORY ---
-if st.session_state.history:
-    st.markdown("## 📜 Last 20 Results")
-    st.write(st.session_state.history[::-1])
