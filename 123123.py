@@ -8,7 +8,7 @@ import io
 # 1. Compact Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS
+# 2. Custom CSS (BLOCK COLORS FIXED PROPERLY)
 st.markdown("""
     <style>
     .block-container { 
@@ -26,15 +26,40 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
+    /* ALL BUTTONS */
     div.stButton > button {
         width: 100% !important;
         height: 65px !important;
-        border-radius: 5px !important; 
+        border-radius: 6px !important; 
         font-weight: 900 !important;   
         font-size: 30px !important;   
         color: white !important;       
         border: 1px solid white !important;
-        margin: 0px !important;
+        margin: 2px 0px !important;
+    }
+
+    /* GREEN BUTTONS (0-4) */
+    button[kind="secondary"][data-testid*="btn_0"],
+    button[kind="secondary"][data-testid*="btn_1"],
+    button[kind="secondary"][data-testid*="btn_2"],
+    button[kind="secondary"][data-testid*="btn_3"],
+    button[kind="secondary"][data-testid*="btn_4"] {
+        background-color: #28a745 !important;
+    }
+
+    /* RED BUTTONS (5-9) */
+    button[kind="secondary"][data-testid*="btn_5"],
+    button[kind="secondary"][data-testid*="btn_6"],
+    button[kind="secondary"][data-testid*="btn_7"],
+    button[kind="secondary"][data-testid*="btn_8"],
+    button[kind="secondary"][data-testid*="btn_9"] {
+        background-color: #dc3545 !important;
+    }
+
+    /* RESET BUTTON */
+    button[data-testid*="reset_app"] {
+        background-color: #343a40 !important;
+        color: white !important;
     }
 
     #MainMenu {visibility: hidden;}
