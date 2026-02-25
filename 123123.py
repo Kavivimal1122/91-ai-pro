@@ -8,7 +8,7 @@ import io
 # 1. Compact Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Single-Page Mobile View
+# 2. Custom CSS for Large Win/Loss Display and Single-Page View
 st.markdown("""
     <style>
     .block-container { 
@@ -18,12 +18,31 @@ st.markdown("""
         padding-right: 0.3rem !important; 
     }
     
+    /* Big Win/Loss Numbers at Top */
+    .big-stats {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background-color: #1a1a1a;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 5px;
+        border: 1px solid #444;
+    }
+    .stat-item {
+        text-align: center;
+        color: white;
+    }
+    .stat-label { font-size: 14px; font-weight: bold; }
+    .stat-value { font-size: 38px; font-weight: 900; line-height: 1; }
+
+    /* Prediction Box */
     .pred-box {
         padding: 5px; 
         border-radius: 8px; 
         text-align: center; 
         border: 2px solid white;
-        margin-bottom: 2px;
+        margin-bottom: 5px;
     }
 
     /* Solid Block Buttons with HUGE White Numbers */
@@ -32,7 +51,7 @@ st.markdown("""
         height: 55px !important;
         border-radius: 4px !important; 
         font-weight: 900 !important;   
-        font-size: 24px !important;   
+        font-size: 26px !important;   
         color: white !important;       
         border: 1px solid white !important;
         margin: 1px 0px !important;
@@ -47,18 +66,6 @@ st.markdown("""
     }
 
     #MainMenu, footer, header {visibility: hidden;}
-    
-    /* Stats Styling */
-    .stats-text {
-        font-size: 16px;
-        font-weight: bold;
-        text-align: center;
-        color: #FFFFFF;
-        background-color: #333333;
-        padding: 5px;
-        border-radius: 5px;
-        margin-bottom: 5px;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -67,23 +74,31 @@ if 'ai_model' not in st.session_state: st.session_state.ai_model = None
 if 'history' not in st.session_state: st.session_state.history = []
 if 'last_5' not in st.session_state: st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
-    st.session_state.stats = {"wins": 0, "loss": 0, "win_streak": 0, "loss_streak": 0}
+    st.session_state.stats = {"wins": 0, "loss": 0}
 if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
-# --- 1. PREDICTION & OVERALL STATS (TOP) ---
+# --- 1. BIG WIN/LOSS DISPLAY (TOP) ---
 if 'next_num' in st.session_state:
-    # Display updated Win and Loss Counts
     st.markdown(f"""
-        <div class="stats-text">
-            🏆 Win={st.session_state.stats['wins']} | ❌ Loss={st.session_state.stats['loss']}
+        <div class="big-stats">
+            <div class="stat-item">
+                <div class="stat-label">WIN</div>
+                <div class="stat-value" style="color: #28a745;">{st.session_state.stats['wins']}</div>
+            </div>
+            <div style="color: #444; font-size: 30px;">|</div>
+            <div class="stat-item">
+                <div class="stat-label">LOSS</div>
+                <div class="stat-value" style="color: #dc3545;">{st.session_state.stats['loss']}</div>
+            </div>
         </div>
     """, unsafe_allow_html=True)
     
+    # Prediction Box
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
             <p style="color: white; margin: 0; font-size: 12px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
-            <h1 style="color: white; margin: 0; font-size: 32px;">{st.session_state.next_num}</h1>
+            <h1 style="color: white; margin: 0; font-size: 35px;">{st.session_state.next_num}</h1>
         </div>
     """, unsafe_allow_html=True)
 
@@ -105,7 +120,6 @@ elif not st.session_state.last_5:
     init_in = st.text_input("Enter 5 digits", max_chars=5)
     if st.button("CONFIRM START"):
         st.session_state.last_5 = [int(d) for d in init_in]
-        # Predict the first one to initialize the dashboard correctly
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
@@ -113,7 +127,6 @@ elif not st.session_state.last_5:
 # --- 3. THE DIALER ---
 else:
     new_num = None
-    # Row 1: 0, 1, 2, 3, 4
     c0, c1, c2, c3, c4 = st.columns(5)
     if c0.button("0", key="btn_0"): new_num = 0
     if c1.button("1", key="btn_1"): new_num = 1
@@ -121,7 +134,6 @@ else:
     if c3.button("3", key="btn_3"): new_num = 3
     if c4.button("4", key="btn_4"): new_num = 4
     
-    # Row 2: 5, 6, 7, 8, 9
     c5, c6, c7, c8, c9 = st.columns(5)
     if c5.button("5", key="btn_5"): new_num = 5
     if c6.button("6", key="btn_6"): new_num = 6
@@ -131,31 +143,23 @@ else:
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
-        
-        # Win/Loss Logic Fix
         if actual_size == st.session_state.last_pred_size:
             st.session_state.stats["wins"] += 1
-            st.session_state.stats["win_streak"] += 1
-            st.session_state.stats["loss_streak"] = 0
             status = "✅"
         else:
             st.session_state.stats["loss"] += 1
-            st.session_state.stats["loss_streak"] += 1
-            st.session_state.stats["win_streak"] = 0
             status = "❌"
         
-        # Save to History
         st.session_state.history.insert(0, {"#": new_num, "R": status})
         if len(st.session_state.history) > 10: st.session_state.history.pop()
         
-        # Update Chain & Predict Next
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-    # --- 4. MINI HISTORY ---
+    # History Table
     if st.session_state.history:
         st.dataframe(pd.DataFrame(st.session_state.history), use_container_width=True, hide_index=True)
 
