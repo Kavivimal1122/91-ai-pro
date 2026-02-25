@@ -8,15 +8,15 @@ import io
 # 1. Page Config
 st.set_page_config(page_title="91 AI Pro Tracker", layout="wide")
 
-# 2. Dialer CSS (Round & Colored Buttons)
+# 2. Custom CSS for Round, Colored Dialer Buttons
 st.markdown("""
     <style>
     div.stButton > button {
         border-radius: 50% !important;
-        width: 65px !important;
-        height: 65px !important;
+        width: 70px !important;
+        height: 70px !important;
         font-weight: bold !important;
-        font-size: 22px !important;
+        font-size: 24px !important;
         color: white !important;
         border: 2px solid white !important;
         margin: 5px;
@@ -33,7 +33,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Initialize Memory
+# 3. Initialize Session Memory
 if 'ai_model' not in st.session_state:
     st.session_state.ai_model = None
 if 'accuracy_val' not in st.session_state:
@@ -47,55 +47,55 @@ if 'stats' not in st.session_state:
 
 st.title("🚀 91 AI Pro Tracker")
 
-# 4. Training (FIXED for 'content' column)
+# 4. Training (Matches your 'content' column)
 if st.session_state.ai_model is None:
     file = st.file_uploader("Upload Qus.csv", type="csv")
     if file is not None:
         if st.button("🚀 START TRAINING NOW"):
             df = pd.read_csv(file)
-            # This line matches your screenshot column name
             if 'content' in df.columns:
-                with st.spinner('AI is reading your data...'):
-                    # Create sequence patterns
+                with st.spinner('AI Training...'):
                     for i in range(1, 6):
                         df[f'p{i}'] = df['content'].shift(i)
                     df = df.dropna()
                     X = df[['p1', 'p2', 'p3', 'p4', 'p5']]
                     y = df['content']
-                    
                     model = GradientBoostingClassifier(n_estimators=100)
                     model.fit(X, y)
-                    
                     tests = random.sample(range(len(X)), 100)
                     score = sum(1 for i in tests if model.predict([X.iloc[i]])[0] == y.iloc[i])
-                    
                     st.session_state.ai_model = model
                     st.session_state.accuracy_val = score
                     st.rerun()
             else:
                 st.error("Error: Column header must be 'content'")
 else:
-    st.success(f"✅ AI Model Active | Accuracy: {st.session_state.accuracy_val}%")
+    st.success(f"✅ AI Active | Accuracy: {st.session_state.accuracy_val}%")
     if st.button("🗑️ Reset All"):
         st.session_state.clear()
         st.rerun()
 
-# 5. Dialer Game Loop
+# 5. The Dialer Game Loop
 if st.session_state.ai_model is not None:
     st.divider()
     
     if not st.session_state.last_5:
-        st.subheader("Setup: Enter first 5 digits (e.g. 15152)")
-        init_input = st.text_input("Enter 5 digits", max_chars=5)
+        st.subheader("Setup: Enter last 5 results (e.g. 52521)")
+        # Added a key to the text input for better tracking
+        init_input = st.text_input("Enter 5 digits", max_chars=5, key="setup_input")
         if st.button("Confirm & Start"):
             if len(init_input) == 5 and init_input.isdigit():
                 st.session_state.last_5 = [int(d) for d in init_input]
+                # Pre-calculate first prediction so it shows immediately
+                pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
+                st.session_state.next_num = pred
+                st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
                 st.rerun()
     else:
         st.write(f"**Sequence Memory:** `{st.session_state.last_5}`")
-        st.subheader("Touch Result:")
+        st.subheader("Touch Number for New Result:")
         
-        # Dial Screen: 1-9 then 0
+        # Dial Screen: 3x3 Grid
         dial_rows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         new_num = None
         
@@ -109,7 +109,7 @@ if st.session_state.ai_model is not None:
         if cols0[1].button("0", key="btn_0"):
             new_num = 0
 
-        # Handle button touch
+        # Handle the button click
         if new_num is not None:
             if 'last_pred_size' in st.session_state:
                 actual_size = "SMALL" if new_num <= 4 else "BIG"
@@ -136,15 +136,15 @@ if st.session_state.ai_model is not None:
             st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
             st.rerun()
 
-    # 6. Color Results & Export
+    # 6. Display Result Box
     if 'next_num' in st.session_state:
         st.divider()
         st.subheader("🔮 NEXT PREDICTION")
         color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
         
         st.markdown(f"""
-            <div style="background-color: {color}; padding: 30px; border-radius: 20px; text-align: center; border: 5px solid white;">
-                <h1 style="color: white; font-size: 60px; margin: 0;">{st.session_state.next_num} - {st.session_state.last_pred_size}</h1>
+            <div style="background-color: {color}; padding: 35px; border-radius: 20px; text-align: center; border: 5px solid white;">
+                <h1 style="color: white; font-size: 65px; margin: 0;">{st.session_state.next_num} - {st.session_state.last_pred_size}</h1>
             </div>
         """, unsafe_allow_html=True)
 
@@ -153,13 +153,13 @@ if st.session_state.ai_model is not None:
             c1, c2, c3 = st.columns(3)
             c1.metric("Wins", st.session_state.stats["wins"])
             c2.metric("Loss", st.session_state.stats["loss"])
-            c3.metric("Max Loss Streak", st.session_state.stats["max_loss"])
+            c3.metric("Max Loss", st.session_state.stats["max_loss"])
             
-            st.subheader("📜 Last 20 Games")
+            st.subheader("📜 History (Last 20)")
             df_hist = pd.DataFrame(st.session_state.history[:20])
             st.table(df_hist)
             
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_hist.to_excel(writer, index=False)
-            st.download_button("📥 Download History Excel", output.getvalue(), "log.xlsx")
+            st.download_button("📥 Download Excel", output.getvalue(), "log.xlsx")
