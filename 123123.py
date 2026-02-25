@@ -17,7 +17,7 @@ if 'last_5' not in st.session_state:
 if 'stats' not in st.session_state:
     st.session_state.stats = {"wins": 0, "loss": 0, "c_win": 0, "c_loss": 0, "max_win": 0, "max_loss": 0}
 
-st.title("🚀 91 AI Pro Tracker (Button Mode)")
+st.title("🚀 91 AI Pro Tracker (Dialer Mode)")
 
 # 1. Training Section
 file = st.file_uploader("Upload Qus.csv", type="csv")
@@ -59,44 +59,65 @@ if st.session_state.ai_model:
             else:
                 st.error("Please enter exactly 5 digits.")
     
-    # Main Game Loop with 0-9 Buttons
+    # Main Game Loop with Dial Pad Buttons
     else:
         st.write(f"**Current Chain:** `{st.session_state.last_5}`")
         st.subheader("Select New Result:")
         
-        # Create 0-9 Buttons
-        cols = st.columns(10)
-        for i in range(10):
-            if cols[i].button(f"{i}", key=f"btn_{i}"):
-                new_num = i
-                
-                # A. Win/Loss Logic (Check previous prediction against this new number)
-                if 'last_pred_size' in st.session_state:
-                    actual_size = "SMALL" if new_num <= 4 else "BIG"
-                    if actual_size == st.session_state.last_pred_size:
-                        st.session_state.stats["wins"] += 1
-                        st.session_state.stats["c_win"] += 1
-                        st.session_state.stats["c_loss"] = 0
-                        status = "✅ WIN"
-                    else:
-                        st.session_state.stats["loss"] += 1
-                        st.session_state.stats["c_loss"] += 1
-                        st.session_state.stats["c_win"] = 0
-                        status = "❌ LOSS"
-                    
-                    st.session_state.stats["max_win"] = max(st.session_state.stats["max_win"], st.session_state.stats["c_win"])
-                    st.session_state.stats["max_loss"] = max(st.session_state.stats["max_loss"], st.session_state.stats["c_loss"])
-                    st.session_state.history.insert(0, {"Number": new_num, "Size": actual_size, "Result": status})
+        # --- Dialer Layout Logic ---
+        new_num = None
+        
+        # Row 1: 1, 2, 3
+        r1_col1, r1_col2, r1_col3, r1_empty = st.columns([1, 1, 1, 7])
+        if r1_col1.button("1", use_container_width=True, key="btn_1"): new_num = 1
+        if r1_col2.button("2", use_container_width=True, key="btn_2"): new_num = 2
+        if r1_col3.button("3", use_container_width=True, key="btn_3"): new_num = 3
+        
+        # Row 2: 4, 5, 6
+        r2_col1, r2_col2, r2_col3, r2_empty = st.columns([1, 1, 1, 7])
+        if r2_col1.button("4", use_container_width=True, key="btn_4"): new_num = 4
+        if r2_col2.button("5", use_container_width=True, key="btn_5"): new_num = 5
+        if r2_col3.button("6", use_container_width=True, key="btn_6"): new_num = 6
+        
+        # Row 3: 7, 8, 9
+        r3_col1, r3_col2, r3_col3, r3_empty = st.columns([1, 1, 1, 7])
+        if r3_col1.button("7", use_container_width=True, key="btn_7"): new_num = 7
+        if r3_col2.button("8", use_container_width=True, key="btn_8"): new_num = 8
+        if r3_col3.button("9", use_container_width=True, key="btn_9"): new_num = 9
+        
+        # Row 4: 0 (Centered)
+        r4_empty1, r4_col0, r4_empty2, r4_empty3 = st.columns([1, 1, 1, 7])
+        if r4_col0.button("0", use_container_width=True, key="btn_0"): new_num = 0
 
-                # B. Update Window (Shift numbers)
-                st.session_state.last_5.pop(0)
-                st.session_state.last_5.append(new_num)
+        # Process choice if any button was pressed
+        if new_num is not None:
+            # A. Win/Loss Logic
+            if 'last_pred_size' in st.session_state:
+                actual_size = "SMALL" if new_num <= 4 else "BIG"
+                if actual_size == st.session_state.last_pred_size:
+                    st.session_state.stats["wins"] += 1
+                    st.session_state.stats["c_win"] += 1
+                    st.session_state.stats["c_loss"] = 0
+                    status = "✅ WIN"
+                else:
+                    st.session_state.stats["loss"] += 1
+                    st.session_state.stats["c_loss"] += 1
+                    st.session_state.stats["c_win"] = 0
+                    status = "❌ LOSS"
                 
-                # C. Generate Next Prediction
-                pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
-                st.session_state.next_num = pred
-                st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
-                st.rerun()
+                st.session_state.stats["max_win"] = max(st.session_state.stats["max_win"], st.session_state.stats["c_win"])
+                st.session_state.stats["max_loss"] = max(st.session_state.stats["max_loss"], st.session_state.stats["c_loss"])
+                st.session_state.history.insert(0, {"Number": new_num, "Size": actual_size, "Result": status})
+
+            # B. Update Window (Shift numbers)
+            st.session_state.last_5.pop(0)
+            st.session_state.last_5.append(new_num)
+            
+            # C. Generate Next Prediction
+            pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
+            st.session_state.next_num = pred
+            st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
+            st.rerun()
 
     # 3. COLOR DISPLAY
     if 'next_num' in st.session_state:
