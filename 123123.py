@@ -35,15 +35,21 @@ st.markdown("""
         margin: 0px !important;
     }
     
-    /* Block Color: Green (0-4) */
+    /* Block Color: Green (0-4) with White Letters */
     div.stButton > button[key^="btn_0"], div.stButton > button[key^="btn_1"], 
     div.stButton > button[key^="btn_2"], div.stButton > button[key^="btn_3"], 
-    div.stButton > button[key^="btn_4"] { background-color: #28a745 !important; }
+    div.stButton > button[key^="btn_4"] { 
+        background-color: #28a745 !important; 
+        color: white !important;
+    }
     
-    /* Block Color: Red (5-9) */
+    /* Block Color: Red (5-9) with White Letters */
     div.stButton > button[key^="btn_5"], div.stButton > button[key^="btn_6"], 
     div.stButton > button[key^="btn_7"], div.stButton > button[key^="btn_8"], 
-    div.stButton > button[key^="btn_9"] { background-color: #dc3545 !important; }
+    div.stButton > button[key^="btn_9"] { 
+        background-color: #dc3545 !important; 
+        color: white !important;
+    }
 
     /* Hide Streamlit elements to save space */
     #MainMenu {visibility: hidden;}
