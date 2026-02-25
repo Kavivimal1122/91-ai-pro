@@ -8,7 +8,7 @@ import io
 # 1. Compact Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS
+# 2. Custom CSS (FIXED BUTTON COLORS PROPERLY)
 st.markdown("""
     <style>
     .block-container { 
@@ -26,7 +26,7 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* ALL BUTTONS */
+    /* ALL BUTTONS BASE STYLE */
     div.stButton > button {
         width: 100% !important;
         height: 65px !important;
@@ -34,36 +34,17 @@ st.markdown("""
         font-weight: 900 !important;   
         font-size: 30px !important;   
         color: white !important;       
-        border: 1px solid white !important;
-        margin: 3px 0px !important;
+        border: none !important;
+        margin: 4px 0px !important;
+        background-color: #1f1f1f !important;  /* Default block color */
     }
 
-    /* GREEN BUTTONS 0-4 */
-    button[data-testid="baseButton-btn_0"],
-    button[data-testid="baseButton-btn_1"],
-    button[data-testid="baseButton-btn_2"],
-    button[data-testid="baseButton-btn_3"],
-    button[data-testid="baseButton-btn_4"] {
-        background-color: #28a745 !important;
-        color: white !important;
+    /* Hover Effect */
+    div.stButton > button:hover {
+        opacity: 0.85 !important;
     }
 
-    /* RED BUTTONS 5-9 */
-    button[data-testid="baseButton-btn_5"],
-    button[data-testid="baseButton-btn_6"],
-    button[data-testid="baseButton-btn_7"],
-    button[data-testid="baseButton-btn_8"],
-    button[data-testid="baseButton-btn_9"] {
-        background-color: #dc3545 !important;
-        color: white !important;
-    }
-
-    /* RESET BUTTON */
-    button[data-testid="baseButton-reset_app"] {
-        background-color: #343a40 !important;
-        color: white !important;
-    }
-
+    /* Hide Streamlit UI */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
