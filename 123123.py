@@ -72,7 +72,7 @@ if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
 # --- 1. PREDICTION & OVERALL STATS (TOP) ---
 if 'next_num' in st.session_state:
-    # Always show Overall Win and Loss Counts
+    # Display updated Win and Loss Counts
     st.markdown(f"""
         <div class="stats-text">
             🏆 Win={st.session_state.stats['wins']} | ❌ Loss={st.session_state.stats['loss']}
@@ -105,11 +105,12 @@ elif not st.session_state.last_5:
     init_in = st.text_input("Enter 5 digits", max_chars=5)
     if st.button("CONFIRM START"):
         st.session_state.last_5 = [int(d) for d in init_in]
+        # Predict the first one to initialize the dashboard correctly
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-# --- 3. THE DIALER (0-4 and 5-9 ROWS) ---
+# --- 3. THE DIALER ---
 else:
     new_num = None
     # Row 1: 0, 1, 2, 3, 4
@@ -130,6 +131,8 @@ else:
 
     if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
+        
+        # Win/Loss Logic Fix
         if actual_size == st.session_state.last_pred_size:
             st.session_state.stats["wins"] += 1
             st.session_state.stats["win_streak"] += 1
@@ -141,9 +144,11 @@ else:
             st.session_state.stats["win_streak"] = 0
             status = "❌"
         
+        # Save to History
         st.session_state.history.insert(0, {"#": new_num, "R": status})
         if len(st.session_state.history) > 10: st.session_state.history.pop()
         
+        # Update Chain & Predict Next
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
