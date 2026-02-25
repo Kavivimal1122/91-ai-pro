@@ -5,10 +5,10 @@ from sklearn.ensemble import GradientBoostingClassifier
 import random
 import io
 
-# 1. Page Configuration
+# 1. Page Config
 st.set_page_config(page_title="91 AI Pro Tracker", layout="wide")
 
-# 2. Custom CSS for Mobile Dialer Styling
+# 2. Dialer CSS (Round & Colored Buttons)
 st.markdown("""
     <style>
     div.stButton > button {
@@ -33,7 +33,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Initialize Session States (The App's Memory)
+# 3. Initialize Memory
 if 'ai_model' not in st.session_state:
     st.session_state.ai_model = None
 if 'accuracy_val' not in st.session_state:
@@ -47,65 +47,59 @@ if 'stats' not in st.session_state:
 
 st.title("🚀 91 AI Pro Tracker")
 
-# 4. Data Upload & Training Logic
+# 4. Training (FIXED for 'content' column)
 if st.session_state.ai_model is None:
     file = st.file_uploader("Upload Qus.csv", type="csv")
     if file is not None:
         if st.button("🚀 START TRAINING NOW"):
             df = pd.read_csv(file)
+            # This line matches your screenshot column name
             if 'content' in df.columns:
-                with st.spinner('AI is reading your data 100 times...'):
-                    # Pattern Preparation
+                with st.spinner('AI is reading your data...'):
+                    # Create sequence patterns
                     for i in range(1, 6):
                         df[f'p{i}'] = df['content'].shift(i)
                     df = df.dropna()
                     X = df[['p1', 'p2', 'p3', 'p4', 'p5']]
                     y = df['content']
                     
-                    # Gradient Boosting Model
                     model = GradientBoostingClassifier(n_estimators=100)
                     model.fit(X, y)
                     
-                    # Test Accuracy
                     tests = random.sample(range(len(X)), 100)
                     score = sum(1 for i in tests if model.predict([X.iloc[i]])[0] == y.iloc[i])
                     
-                    # Save to Memory
                     st.session_state.ai_model = model
                     st.session_state.accuracy_val = score
                     st.rerun()
             else:
-                st.error("Missing column: 'content'")
+                st.error("Error: Column header must be 'content'")
 else:
-    # Show status once trained
     st.success(f"✅ AI Model Active | Accuracy: {st.session_state.accuracy_val}%")
-    if st.button("🗑️ Reset & Upload New Data"):
+    if st.button("🗑️ Reset All"):
         st.session_state.clear()
         st.rerun()
 
-# 5. Main Game Interface
+# 5. Dialer Game Loop
 if st.session_state.ai_model is not None:
     st.divider()
     
-    # Step 1: Initial 5 Numbers
     if not st.session_state.last_5:
-        st.subheader("Setup: Enter last 5 results (e.g. 15152)")
+        st.subheader("Setup: Enter first 5 digits (e.g. 15152)")
         init_input = st.text_input("Enter 5 digits", max_chars=5)
         if st.button("Confirm & Start"):
             if len(init_input) == 5 and init_input.isdigit():
                 st.session_state.last_5 = [int(d) for d in init_input]
                 st.rerun()
-    
-    # Step 2: The Dialer
     else:
-        st.write(f"**Sequence:** `{st.session_state.last_5}`")
+        st.write(f"**Sequence Memory:** `{st.session_state.last_5}`")
         st.subheader("Touch Result:")
         
-        # Grid arrangement
-        rows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        # Dial Screen: 1-9 then 0
+        dial_rows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         new_num = None
         
-        for row in rows:
+        for row in dial_rows:
             cols = st.columns([1, 1, 1, 10])
             for idx, num in enumerate(row):
                 if cols[idx].button(str(num), key=f"btn_{num}"):
@@ -115,9 +109,8 @@ if st.session_state.ai_model is not None:
         if cols0[1].button("0", key="btn_0"):
             new_num = 0
 
-        # When a number is touched
+        # Handle button touch
         if new_num is not None:
-            # Win/Loss Tracker
             if 'last_pred_size' in st.session_state:
                 actual_size = "SMALL" if new_num <= 4 else "BIG"
                 if actual_size == st.session_state.last_pred_size:
@@ -131,12 +124,10 @@ if st.session_state.ai_model is not None:
                     st.session_state.stats["c_win"] = 0
                     status = "❌ LOSS"
                 
-                # Update Records
                 st.session_state.stats["max_win"] = max(st.session_state.stats["max_win"], st.session_state.stats["c_win"])
                 st.session_state.stats["max_loss"] = max(st.session_state.stats["max_loss"], st.session_state.stats["c_loss"])
                 st.session_state.history.insert(0, {"Number": new_num, "Size": actual_size, "Result": status})
 
-            # Shift the window and predict next
             st.session_state.last_5.pop(0)
             st.session_state.last_5.append(new_num)
             
@@ -145,7 +136,7 @@ if st.session_state.ai_model is not None:
             st.session_state.last_pred_size = "SMALL" if pred <= 4 else "BIG"
             st.rerun()
 
-    # 6. Display Next Prediction
+    # 6. Color Results & Export
     if 'next_num' in st.session_state:
         st.divider()
         st.subheader("🔮 NEXT PREDICTION")
@@ -157,20 +148,18 @@ if st.session_state.ai_model is not None:
             </div>
         """, unsafe_allow_html=True)
 
-        # 7. Stats and Table
         if st.session_state.history:
             st.divider()
             c1, c2, c3 = st.columns(3)
             c1.metric("Wins", st.session_state.stats["wins"])
             c2.metric("Loss", st.session_state.stats["loss"])
-            c3.metric("Max Loss", st.session_state.stats["max_loss"])
+            c3.metric("Max Loss Streak", st.session_state.stats["max_loss"])
             
-            st.subheader("📜 Last 20 Results")
+            st.subheader("📜 Last 20 Games")
             df_hist = pd.DataFrame(st.session_state.history[:20])
             st.table(df_hist)
             
-            # Excel Generation
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_hist.to_excel(writer, index=False)
-            st.download_button("📥 Save to Excel", output.getvalue(), "91_log.xlsx")
+            st.download_button("📥 Download History Excel", output.getvalue(), "log.xlsx")
