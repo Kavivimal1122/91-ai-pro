@@ -8,7 +8,7 @@ import io
 # 1. Page Config
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Mobile Single-Page View
+# 2. Custom CSS for HUGE Maximum Streak Display
 st.markdown("""
     <style>
     .block-container { 
@@ -18,15 +18,36 @@ st.markdown("""
         padding-right: 0.3rem !important; 
     }
     
-    .stats-header {
-        background-color: #1a1a1a;
-        padding: 8px;
-        border-radius: 5px;
+    /* MASSIVE MAX STREAK DISPLAY */
+    .max-streak-container {
+        background-color: #0e1117;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
-        margin-bottom: 5px;
-        border: 1px solid #444;
+        border: 2px solid #444;
+        margin-bottom: 8px;
     }
-    .stats-val { font-size: 20px; font-weight: 900; color: white; }
+    .max-label {
+        font-size: 16px;
+        font-weight: bold;
+        color: #888;
+        text-transform: uppercase;
+        margin-bottom: -5px;
+    }
+    .max-value {
+        font-size: 48px; /* Extra Large Size */
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    /* Small secondary stats */
+    .total-stats {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 8px;
+        color: white;
+    }
 
     .pred-box {
         padding: 8px; 
@@ -66,21 +87,33 @@ if 'stats' not in st.session_state:
     st.session_state.stats = {
         "wins": 0, "loss": 0, 
         "current_streak_val": 0, "last_result": None,
-        "max_win_streak": 0, "max_loss_streak": 0 # Track maximums here
+        "max_win_streak": 0, "max_loss_streak": 0 
     }
 if 'accuracy' not in st.session_state: st.session_state.accuracy = 0
 
-# --- 1. OVERALL STATS DISPLAY (TOP) ---
+# --- 1. HUGE MAX STREAK DISPLAY (TOP) ---
 if 'next_num' in st.session_state:
-    # Displaying Total Win/Loss and Max Streaks
+    # Displaying the massive Max streaks you requested
     st.markdown(f"""
-        <div class="stats-header">
-            <span style="color: #28a745;">Win={st.session_state.stats['wins']}</span> | 
-            <span style="color: #dc3545;">Loss={st.session_state.stats['loss']}</span><br>
-            <span style="font-size: 14px; color: #aaa;">MAX Win: {st.session_state.stats['max_win_streak']} | MAX Loss: {st.session_state.stats['max_loss_streak']}</span>
+        <div class="max-streak-container">
+            <div style="display: flex; justify-content: space-around;">
+                <div>
+                    <div class="max-label">MAX WIN</div>
+                    <div class="max-value" style="color: #28a745;">{st.session_state.stats['max_win_streak']}</div>
+                </div>
+                <div style="width: 2px; background-color: #444; height: 50px;"></div>
+                <div>
+                    <div class="max-label">MAX LOSS</div>
+                    <div class="max-value" style="color: #dc3545;">{st.session_state.stats['max_loss_streak']}</div>
+                </div>
+            </div>
+        </div>
+        <div class="total-stats">
+            Win: {st.session_state.stats['wins']} | Loss: {st.session_state.stats['loss']}
         </div>
     """, unsafe_allow_html=True)
     
+    # Prediction Box
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
@@ -125,27 +158,28 @@ else:
         is_win = (actual_size == st.session_state.last_pred_size)
         result_type = "win" if is_win else "loss"
         
-        # 1. Total Counters
+        # Total Counters
         if is_win:
             st.session_state.stats["wins"] += 1
         else:
             st.session_state.stats["loss"] += 1
             
-        # 2. Running Streak Counter
+        # Running Streak Logic
         if result_type == st.session_state.stats["last_result"]:
             st.session_state.stats["current_streak_val"] += 1
         else:
             st.session_state.stats["current_streak_val"] = 1
             st.session_state.stats["last_result"] = result_type
 
-        # 3. Logic to Find Maximum Continuous Win/Loss
+        # Update Maximums
         if result_type == "win":
             st.session_state.stats["max_win_streak"] = max(st.session_state.stats["max_win_streak"], st.session_state.stats["current_streak_val"])
         else:
             st.session_state.stats["max_loss_streak"] = max(st.session_state.stats["max_loss_streak"], st.session_state.stats["current_streak_val"])
 
-        # History and Prediction Update
+        # History Update
         st.session_state.history.insert(0, {"Type": result_type.upper(), "Count": st.session_state.stats["current_streak_val"], "Number": new_num})
+        
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
