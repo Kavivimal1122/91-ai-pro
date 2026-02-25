@@ -17,7 +17,7 @@ if 'last_5' not in st.session_state:
 if 'stats' not in st.session_state:
     st.session_state.stats = {"wins": 0, "loss": 0, "c_win": 0, "c_loss": 0, "max_win": 0, "max_loss": 0}
 
-st.title("🚀 91 AI Pro Tracker (Button Mode)")
+st.title("🚀 91 AI Pro Tracker (Button Input Mode)")
 
 # 1. Training Section
 file = st.file_uploader("Upload Qus.csv", type="csv")
@@ -62,15 +62,16 @@ if st.session_state.ai_model:
     # Main Game Loop with 0-9 Buttons
     else:
         st.write(f"**Current Chain:** `{st.session_state.last_5}`")
-        st.subheader("Select New Result:")
+        st.subheader("Touch the Number for New Result:")
         
-        # Create 0-9 Buttons
+        # Create 0-9 Buttons as your Input
         cols = st.columns(10)
         for i in range(10):
-            if cols[i].button(f"{i}", key=f"btn_{i}"):
+            # When you touch the number button, it enters as the "New Result"
+            if cols[i].button(f"{i}", key=f"btn_{i}", use_container_width=True):
                 new_num = i
                 
-                # A. Win/Loss Logic (Check previous prediction against this new number)
+                # A. Win/Loss Logic
                 if 'last_pred_size' in st.session_state:
                     actual_size = "SMALL" if new_num <= 4 else "BIG"
                     if actual_size == st.session_state.last_pred_size:
@@ -88,7 +89,7 @@ if st.session_state.ai_model:
                     st.session_state.stats["max_loss"] = max(st.session_state.stats["max_loss"], st.session_state.stats["c_loss"])
                     st.session_state.history.insert(0, {"Number": new_num, "Size": actual_size, "Result": status})
 
-                # B. Update Window (Shift numbers)
+                # B. Update Window (Remove first digit, add the touched number)
                 st.session_state.last_5.pop(0)
                 st.session_state.last_5.append(new_num)
                 
@@ -134,6 +135,6 @@ if st.session_state.ai_model:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-if st.button("Reset All"):
+if st.button("Reset All Data"):
     st.session_state.clear()
     st.rerun()
