@@ -8,49 +8,55 @@ import io
 # 1. Page Config for tight mobile display
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Dialer Grid and Single-Page View
+# 2. Custom CSS for 5-Column Dialer and Single-Page View
 st.markdown("""
     <style>
-    /* Remove top margin and padding for mobile */
+    /* Remove top margin and padding for mobile fit */
     .block-container { 
-        padding-top: 0.2rem !important; 
+        padding-top: 0rem !important; 
         padding-bottom: 0rem !important; 
-        padding-left: 0.5rem !important; 
-        padding-right: 0.5rem !important; 
+        padding-left: 0.3rem !important; 
+        padding-right: 0.3rem !important; 
     }
     
-    /* Result Box styling */
+    /* Small, compact result box */
     .pred-box {
-        padding: 8px; 
+        padding: 5px; 
         border-radius: 8px; 
         text-align: center; 
         border: 2px solid white;
         margin-bottom: 2px;
     }
 
-    /* DIALER BUTTONS: Forced Block Style with Big White Numbers */
+    /* DIALER BUTTONS: Block Style with Large White Numbers */
     div.stButton > button {
         width: 100% !important;
-        height: 60px !important;
-        border-radius: 5px !important; 
+        height: 55px !important;
+        border-radius: 4px !important; 
         font-weight: 900 !important;   
-        font-size: 28px !important;   
+        font-size: 24px !important;   
         color: white !important;       
         border: 1px solid white !important;
-        margin: 2px 0px !important;
+        margin: 1px 0px !important;
         background-color: #1f1f1f !important;
     }
 
-    /* Mobile specific: ensure the dialer columns fit 5 in a row */
+    /* Force 5 columns to fit on one row for mobile */
     [data-testid="column"] {
-        width: 18% !important;
-        flex: 1 1 18% !important;
-        min-width: 18% !important;
+        width: 19% !important;
+        flex: 1 1 19% !important;
+        min-width: 19% !important;
     }
 
+    /* Hide Streamlit UI to save screen space */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Shrink text elements */
+    h1 { font-size: 28px !important; }
+    h2 { font-size: 18px !important; }
+    .stCaption { font-size: 11px !important; margin-bottom: -10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -69,8 +75,8 @@ if 'next_num' in st.session_state:
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
-            <p style="color: white; margin: 0; font-size: 14px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
-            <h1 style="color: white; margin: 0; font-size: 40px;">{st.session_state.next_num}</h1>
+            <p style="color: white; margin: 0; font-size: 12px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
+            <h1 style="color: white; margin: 0; font-size: 32px;">{st.session_state.next_num}</h1>
         </div>
     """, unsafe_allow_html=True)
 
@@ -88,7 +94,7 @@ if st.session_state.ai_model is None:
             st.session_state.accuracy, st.session_state.ai_model = score, model
             st.rerun()
 elif not st.session_state.last_5:
-    st.info(f"Training Acc: {st.session_state.accuracy}%")
+    st.info(f"Acc: {st.session_state.accuracy}%")
     init_in = st.text_input("Enter 5 digits", max_chars=5)
     if st.button("CONFIRM START"):
         st.session_state.last_5 = [int(d) for d in init_in]
@@ -96,7 +102,7 @@ elif not st.session_state.last_5:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-# --- 3. THE DIALER (FORCED 0-4 and 5-9 ROWS) ---
+# --- 3. THE DIALER (0-4 and 5-9 ROWS) ---
 else:
     new_num = None
     
@@ -121,14 +127,14 @@ else:
         if actual_size == st.session_state.last_pred_size:
             st.session_state.stats["win_streak"] += 1
             st.session_state.stats["loss_streak"] = 0
-            status = "✅ WIN"
+            status = "✅"
         else:
             st.session_state.stats["loss_streak"] += 1
             st.session_state.stats["win_streak"] = 0
-            status = "❌ LOSS"
+            status = "❌"
         
-        st.session_state.history.insert(0, {"#": new_num, "Result": status})
-        if len(st.session_state.history) > 20: st.session_state.history.pop()
+        st.session_state.history.insert(0, {"#": new_num, "R": status})
+        if len(st.session_state.history) > 10: st.session_state.history.pop()
         
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
@@ -136,10 +142,8 @@ else:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-    # --- 4. HISTORY (LAST 20) ---
+    # --- 4. MINI HISTORY ---
     if st.session_state.history:
-        st.write("---")
-        st.subheader("📜 History (Last 20)")
         st.dataframe(pd.DataFrame(st.session_state.history), use_container_width=True, hide_index=True)
 
     if st.button("RESET ALL", key="reset"):
