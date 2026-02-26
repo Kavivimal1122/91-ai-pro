@@ -5,12 +5,12 @@ from sklearn.ensemble import GradientBoostingClassifier
 import os
 
 # 1. Page Configuration
-st.set_page_config(page_title="91 AI Pro - Integrated", layout="centered")
+st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Combined Custom CSS
+# 2. Custom CSS for Single Row Dialer and Mobile Optimization
 st.markdown("""
     <style>
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
+    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
     
     .max-streak-container {
         background-color: #0e1117; padding: 10px; border-radius: 12px;
@@ -33,9 +33,12 @@ st.markdown("""
         width: 100% !important; height: 50px !important; border-radius: 4px !important; 
         font-weight: 900 !important; font-size: 18px !important; color: white !important;        
         border: 1px solid white !important; margin: 1px 0px !important; background-color: #1f1f1f !important;
+        padding: 0px !important;
     }
 
+    /* Force 10 columns to stay in one line on mobile */
     [data-testid="column"] { width: 9% !important; flex: 1 1 9% !important; min-width: 9% !important; }
+
     #MainMenu, footer, header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
@@ -171,6 +174,17 @@ else:
                             b_last, b_max_l = "LOSS", max(b_max_l, b_curr)
 
                         batch_res.append({"Index": i+1, "Actual": a_num, "AI Pred": f"{p_sz}({p_num})", "Status": status, "Streak": b_curr})
+
+                    # Final output added for Batch Exam Mode as requested
+                    st.markdown(f"""
+                        <div class="max-streak-container">
+                            <div style="display: flex; justify-content: space-around; align-items: center;">
+                                <div><div class="max-label">MAX WIN</div><div class="max-value" style="color: #28a745;">{b_max_w}</div></div>
+                                <div style="width: 3px; background-color: #444; height: 30px;"></div>
+                                <div><div class="max-label">MAX LOSS</div><div class="max-value" style="color: #dc3545;">{b_max_l}</div></div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
                     # Display Batch Stats
                     c1, c2, c3 = st.columns(3)
