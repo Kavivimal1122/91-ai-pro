@@ -7,7 +7,7 @@ import random
 # 1. Page Configuration
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Mobile Optimization
+# 2. Custom CSS for Single Row Dialer and Mobile Optimization
 st.markdown("""
     <style>
     .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
@@ -21,14 +21,18 @@ st.markdown("""
 
     .total-stats { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 5px; color: white; }
 
-    .pred-box { padding: 8px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 10px; }
+    .pred-box { padding: 8px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 5px; }
 
-    /* Styling the text input for keyboard entry */
-    input {
-        font-size: 24px !important;
-        text-align: center !important;
-        font-weight: bold !important;
+    /* SINGLE ROW DIALER: Buttons are narrow to fit 10 in a row */
+    div.stButton > button {
+        width: 100% !important; height: 50px !important; border-radius: 4px !important; 
+        font-weight: 900 !important; font-size: 18px !important; color: white !important;       
+        border: 1px solid white !important; margin: 1px 0px !important; background-color: #1f1f1f !important;
+        padding: 0px !important;
     }
+
+    /* Force 10 columns to stay in one line on mobile */
+    [data-testid="column"] { width: 9% !important; flex: 1 1 9% !important; min-width: 9% !important; }
 
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -70,13 +74,14 @@ if st.session_state.ai_model is None:
         if 'content' in df.columns:
             for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
             df = df.dropna()
+            # Optimized for Mobile Speed: 500 estimators
             model = GradientBoostingClassifier(n_estimators=500, learning_rate=0.02, max_depth=7, subsample=0.8, random_state=42)
             model.fit(df[['p1','p2','p3','p4','p5']], df['content'])
             st.session_state.ai_model = model
             st.rerun()
 
 elif not st.session_state.last_5:
-    init_in = st.text_input("Enter 5 digits", max_chars=5, key="init_keyboard")
+    init_in = st.text_input("Enter 5 digits", max_chars=5)
     if st.button("START"):
         if len(init_in) == 5:
             st.session_state.last_5 = [int(d) for d in init_in]
@@ -84,14 +89,15 @@ elif not st.session_state.last_5:
             st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
             st.rerun()
 
-# --- 6. KEYBOARD INPUT (0-9) ---
+# --- 6. SINGLE ROW DIALER (0-9) ---
 else:
-    # Use a text input for keyboard entry. 'on_change' processes it automatically when you press Enter.
-    keyboard_entry = st.text_input("Enter New Number (0-9)", max_chars=1, key="entry_field")
+    new_num = None
+    cols = st.columns(10) # 10 columns for 0-9 in one row
+    for i in range(10):
+        if cols[i].button(str(i), key=f"btn_{i}"):
+            new_num = i
 
-    if keyboard_entry and keyboard_entry.isdigit():
-        new_num = int(keyboard_entry)
-        
+    if new_num is not None:
         actual_size = "SMALL" if new_num <= 4 else "BIG"
         is_win = (actual_size == st.session_state.last_pred_size)
         res_type = "win" if is_win else "loss"
@@ -109,8 +115,6 @@ else:
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
-        
-        # Clear the input box by rerunning
         st.rerun()
 
     # --- 7. HISTORY & DOWNLOAD ---
@@ -118,6 +122,7 @@ else:
         hist_df = pd.DataFrame(st.session_state.history)
         st.table(hist_df.head(10))
         
+        # Point 2: Download the data result
         csv = hist_df.to_csv(index=False).encode('utf-8')
         st.download_button(label="📥 DOWNLOAD HISTORY", data=csv, file_name='ai_results.csv', mime='text/csv')
 
