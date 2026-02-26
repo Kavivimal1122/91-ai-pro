@@ -2,50 +2,34 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
+import random
 
 # 1. Page Configuration
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Joined Excel Grid
+# 2. Custom CSS for Mobile Optimization
 st.markdown("""
     <style>
-    /* Main container padding */
-    .block-container { padding: 0.5rem !important; }
-
-    /* Pred-box styling */
-    .pred-box { 
-        padding: 10px; 
-        border-radius: 8px; 
-        text-align: center; 
-        border: 2px solid white; 
-        margin-bottom: 20px; 
-    }
-
-    /* EXCEL GRID BUTTONS: Joint styling */
-    div.stButton > button {
-        width: 100% !important; 
-        height: 60px !important; 
-        border-radius: 0px !important; /* Square corners for joining */
-        font-weight: 900 !important; 
-        font-size: 24px !important; 
-        color: black !important;        
-        background-color: #ffff00 !important; /* Yellow background */
-        border: 1px solid black !important; /* Grid lines */
-        margin: 0px !important;
-        padding: 0px !important;
-    }
-
-    /* Remove the default gap between Streamlit columns to join buttons */
-    [data-testid="column"] {
-        padding: 0px !important;
-        margin: 0px !important;
-    }
+    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
     
-    [data-testid="stHorizontalBlock"] {
-        gap: 0px !important;
+    .max-streak-container {
+        background-color: #0e1117; padding: 10px; border-radius: 12px;
+        text-align: center; border: 2px solid #444; margin-bottom: 5px;
+    }
+    .max-label { font-size: 14px; font-weight: bold; color: #888; }
+    .max-value { font-size: 45px; font-weight: 900; line-height: 1; }
+
+    .total-stats { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 5px; color: white; }
+
+    .pred-box { padding: 8px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 10px; }
+
+    /* Styling the text input for keyboard entry */
+    input {
+        font-size: 24px !important;
+        text-align: center !important;
+        font-weight: bold !important;
     }
 
-    /* UI Clean up */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
@@ -59,17 +43,28 @@ if 'stats' not in st.session_state:
 
 # --- 4. TOP DISPLAY ---
 if st.session_state.ai_model is not None and 'next_num' in st.session_state:
+    st.markdown(f"""
+        <div class="max-streak-container">
+            <div style="display: flex; justify-content: space-around; align-items: center;">
+                <div><div class="max-label">MAX WIN</div><div class="max-value" style="color: #28a745;">{st.session_state.stats['max_win']}</div></div>
+                <div style="width: 3px; background-color: #444; height: 40px;"></div>
+                <div><div class="max-label">MAX LOSS</div><div class="max-value" style="color: #dc3545;">{st.session_state.stats['max_loss']}</div></div>
+            </div>
+        </div>
+        <div class="total-stats">Win: {st.session_state.stats['wins']} | Loss: {st.session_state.stats['loss']}</div>
+    """, unsafe_allow_html=True)
+    
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
-            <p style="color: white; margin: 0; font-size: 14px; font-weight: bold;">AI PREDICTION</p>
-            <h1 style="color: white; margin: 0; font-size: 45px;">{st.session_state.last_pred_size} ({st.session_state.next_num})</h1>
+            <p style="color: white; margin: 0; font-size: 12px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
+            <h1 style="color: white; margin: 0; font-size: 40px;">{st.session_state.next_num}</h1>
         </div>
     """, unsafe_allow_html=True)
 
 # --- 5. WORKFLOW ---
 if st.session_state.ai_model is None:
-    file = st.file_uploader("Upload Game Data (CSV)", type="csv")
+    file = st.file_uploader("Upload Qus.csv", type="csv")
     if file and st.button("🚀 TRAIN AI"):
         df = pd.read_csv(file)
         if 'content' in df.columns:
@@ -81,7 +76,7 @@ if st.session_state.ai_model is None:
             st.rerun()
 
 elif not st.session_state.last_5:
-    init_in = st.text_input("Enter last 5 numbers", max_chars=5)
+    init_in = st.text_input("Enter 5 digits", max_chars=5, key="init_keyboard")
     if st.button("START"):
         if len(init_in) == 5:
             st.session_state.last_5 = [int(d) for d in init_in]
@@ -89,40 +84,42 @@ elif not st.session_state.last_5:
             st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
             st.rerun()
 
-# --- 6. JOINED EXCEL GRID (0-9) ---
+# --- 6. KEYBOARD INPUT (0-9) ---
 else:
-    new_num = None
-    
-    # Row 1: Numbers 0 to 4
-    row1 = st.columns(5)
-    for i in range(5):
-        if row1[i].button(str(i), key=f"num_{i}"):
-            new_num = i
-            
-    # Row 2: Numbers 5 to 9
-    row2 = st.columns(5)
-    for i in range(5, 10):
-        if row2[i-5].button(str(i), key=f"num_{i}"):
-            new_num = i
+    # Use a text input for keyboard entry. 'on_change' processes it automatically when you press Enter.
+    keyboard_entry = st.text_input("Enter New Number (0-9)", max_chars=1, key="entry_field")
 
-    if new_num is not None:
+    if keyboard_entry and keyboard_entry.isdigit():
+        new_num = int(keyboard_entry)
+        
         actual_size = "SMALL" if new_num <= 4 else "BIG"
         is_win = (actual_size == st.session_state.last_pred_size)
         res_type = "win" if is_win else "loss"
         
         st.session_state.stats["wins" if is_win else "loss"] += 1
-        st.session_state.history.insert(0, {"Result": actual_size, "Num": new_num, "Status": res_type.upper()})
+        if res_type == st.session_state.stats["last_res"]: st.session_state.stats["curr_streak"] += 1
+        else:
+            st.session_state.stats["curr_streak"] = 1
+            st.session_state.stats["last_res"] = res_type
         
-        # Update AI
+        st.session_state.stats[f"max_{res_type}"] = max(st.session_state.stats[f"max_{res_type}"], st.session_state.stats["curr_streak"])
+        st.session_state.history.insert(0, {"Type": res_type.upper(), "Streak": st.session_state.stats["curr_streak"], "Num": new_num})
+        
         st.session_state.last_5.pop(0)
         st.session_state.last_5.append(new_num)
         pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
+        
+        # Clear the input box by rerunning
         st.rerun()
 
-    # --- 7. HISTORY TABLE ---
+    # --- 7. HISTORY & DOWNLOAD ---
     if st.session_state.history:
-        st.table(pd.DataFrame(st.session_state.history).head(5))
+        hist_df = pd.DataFrame(st.session_state.history)
+        st.table(hist_df.head(10))
+        
+        csv = hist_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="📥 DOWNLOAD HISTORY", data=csv, file_name='ai_results.csv', mime='text/csv')
 
     if st.button("RESET"):
         st.session_state.clear()
