@@ -7,7 +7,7 @@ import random
 # 1. Page Configuration
 st.set_page_config(page_title="91 AI Pro", layout="centered")
 
-# 2. Custom CSS for Single Row Dialer and Mobile Optimization
+# 2. Custom CSS for Yellow Number Grid and Mobile Optimization
 st.markdown("""
     <style>
     .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; padding-left: 0.2rem !important; padding-right: 0.2rem !important; }
@@ -21,18 +21,27 @@ st.markdown("""
 
     .total-stats { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 5px; color: white; }
 
-    .pred-box { padding: 8px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 5px; }
+    .pred-box { padding: 8px; border-radius: 8px; text-align: center; border: 2px solid white; margin-bottom: 15px; }
 
-    /* SINGLE ROW DIALER: Buttons are narrow to fit 10 in a row */
+    /* STYLED NUMBER GRID: Yellow background with black bold text */
     div.stButton > button {
-        width: 100% !important; height: 50px !important; border-radius: 4px !important; 
-        font-weight: 900 !important; font-size: 18px !important; color: white !important;       
-        border: 1px solid white !important; margin: 1px 0px !important; background-color: #1f1f1f !important;
+        width: 100% !important; 
+        height: 60px !important; 
+        border-radius: 0px !important; 
+        font-weight: 900 !important; 
+        font-size: 24px !important; 
+        color: black !important;        
+        border: 1px solid black !important; 
+        background-color: #ffff00 !important; /* Yellow like your image */
+        margin: 0px !important;
         padding: 0px !important;
     }
-
-    /* Force 10 columns to stay in one line on mobile */
-    [data-testid="column"] { width: 9% !important; flex: 1 1 9% !important; min-width: 9% !important; }
+    
+    /* Hover effect for buttons */
+    div.stButton > button:hover {
+        background-color: #e6e600 !important;
+        color: black !important;
+    }
 
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -61,8 +70,8 @@ if st.session_state.ai_model is not None and 'next_num' in st.session_state:
     color = "#dc3545" if st.session_state.last_pred_size == "BIG" else "#28a745"
     st.markdown(f"""
         <div class="pred-box" style="background-color: {color};">
-            <p style="color: white; margin: 0; font-size: 12px; font-weight: bold;">NEXT: {st.session_state.last_pred_size}</p>
-            <h1 style="color: white; margin: 0; font-size: 40px;">{st.session_state.next_num}</h1>
+            <p style="color: white; margin: 0; font-size: 14px; font-weight: bold;">NEXT PREDICTION</p>
+            <h1 style="color: white; margin: 0; font-size: 50px;">{st.session_state.last_pred_size} ({st.session_state.next_num})</h1>
         </div>
     """, unsafe_allow_html=True)
 
@@ -74,27 +83,34 @@ if st.session_state.ai_model is None:
         if 'content' in df.columns:
             for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
             df = df.dropna()
-            # Optimized for Mobile Speed: 500 estimators
             model = GradientBoostingClassifier(n_estimators=500, learning_rate=0.02, max_depth=7, subsample=0.8, random_state=42)
             model.fit(df[['p1','p2','p3','p4','p5']], df['content'])
             st.session_state.ai_model = model
             st.rerun()
 
 elif not st.session_state.last_5:
-    init_in = st.text_input("Enter 5 digits", max_chars=5)
-    if st.button("START"):
+    init_in = st.text_input("Enter last 5 digits from game history", max_chars=5)
+    if st.button("START ANALYSIS"):
         if len(init_in) == 5:
             st.session_state.last_5 = [int(d) for d in init_in]
             pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
             st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
             st.rerun()
 
-# --- 6. SINGLE ROW DIALER (0-9) ---
+# --- 6. TWO-ROW YELLOW DIALER (Matched to Image) ---
 else:
     new_num = None
-    cols = st.columns(10) # 10 columns for 0-9 in one row
-    for i in range(10):
-        if cols[i].button(str(i), key=f"btn_{i}"):
+    
+    # Row 1: 0, 1, 2, 3, 4
+    row1_cols = st.columns(5)
+    for i in range(5):
+        if row1_cols[i].button(str(i), key=f"btn_{i}"):
+            new_num = i
+            
+    # Row 2: 5, 6, 7, 8, 9
+    row2_cols = st.columns(5)
+    for i in range(5, 10):
+        if row2_cols[i-5].button(str(i), key=f"btn_{i}"):
             new_num = i
 
     if new_num is not None:
@@ -117,15 +133,15 @@ else:
         st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
         st.rerun()
 
-    # --- 7. HISTORY & DOWNLOAD ---
+    # --- 7. HISTORY & RESET ---
     if st.session_state.history:
+        st.markdown("### Recent History")
         hist_df = pd.DataFrame(st.session_state.history)
         st.table(hist_df.head(10))
         
-        # Point 2: Download the data result
         csv = hist_df.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 DOWNLOAD HISTORY", data=csv, file_name='ai_results.csv', mime='text/csv')
+        st.download_button(label="📥 DOWNLOAD RESULTS", data=csv, file_name='ai_results.csv', mime='text/csv')
 
-    if st.button("RESET"):
+    if st.button("RESET ALL"):
         st.session_state.clear()
         st.rerun()
