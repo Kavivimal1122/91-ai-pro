@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 import os
+import time
 
 # 1. Page Configuration
 st.set_page_config(page_title="91 AI Pro", layout="centered")
@@ -50,17 +51,25 @@ if 'last_5' not in st.session_state: st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
     st.session_state.stats = {"wins": 0, "loss": 0, "curr_streak": 0, "last_res": None, "max_win": 0, "max_loss": 0}
 
-# --- 4. SHARED TRAINING FUNCTION (HIGH ACCURACY) ---
+# --- 4. SHARED TRAINING FUNCTION (WITH % ANIMATION) ---
 def train_ai(file_source):
     df = pd.read_csv(file_source)
     if 'content' in df.columns:
-        # 10-digit pattern recognition
+        # Progress Animation
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        for percent_complete in range(100):
+            time.sleep(0.01) # Speed of animation
+            progress_bar.progress(percent_complete + 1)
+            status_text.text(f"Training AI Model: {percent_complete + 1}%")
+        
+        # 10-digit pattern recognition logic
         for i in range(1, 11): 
             df[f'p{i}'] = df['content'].shift(i)
         
         df = df.dropna()
         
-        # Slower learning rate for precision
+        # High Accuracy Gradient Boosting
         model = GradientBoostingClassifier(
             n_estimators=1000, 
             learning_rate=0.01, 
@@ -71,6 +80,8 @@ def train_ai(file_source):
         
         features = [f'p{i}' for i in range(1, 11)]
         model.fit(df[features], df['content'])
+        status_text.text("✅ Training 100% Complete!")
+        time.sleep(0.5)
         return model
     return None
 
@@ -79,11 +90,9 @@ if st.session_state.ai_model is None:
     st.title("🤖 AI Initialization")
     qus_path = "Qus.csv"
     if os.path.exists(qus_path):
-        with st.spinner("Training 10-Digit Model..."):
-            st.session_state.ai_model = train_ai(qus_path)
-            if st.session_state.ai_model:
-                st.success("✅ Auto-Trained from Qus.csv")
-                st.rerun()
+        st.session_state.ai_model = train_ai(qus_path)
+        if st.session_state.ai_model:
+            st.rerun()
     
     uploaded_qus = st.file_uploader("Upload Qus.csv to Start", type="csv")
     if uploaded_qus and st.button("🚀 TRAIN AI"):
@@ -101,7 +110,6 @@ else:
             if st.button("START"):
                 if len(init_in) == 10:
                     st.session_state.last_5 = [int(d) for d in init_in]
-                    # Features must be in order: p1 (last), p2, p3... p10
                     pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
                     st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
                     st.rerun()
@@ -170,12 +178,15 @@ else:
                             b_last, b_max_l = "LOSS", max(b_max_l, b_curr)
                         batch_res.append({"Actual": a_num, "AI Pred": f"{p_sz}({p_num})", "Status": status, "Streak": b_curr})
 
+                    # Updated Batch Display with your requested statistics
                     st.markdown(f"""
                         <div class="max-streak-container">
-                            <div style="display: flex; justify-content: space-around; align-items: center;">
-                                <div><div class="max-label">MAX WIN</div><div class="max-value" style="color: #28a745;">{b_max_w}</div></div>
-                                <div style="width: 3px; background-color: #444; height: 30px;"></div>
-                                <div><div class="max-label">MAX LOSS</div><div class="max-value" style="color: #dc3545;">{b_max_l}</div></div>
+                            <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap;">
+                                <div style="margin: 5px;"><div class="max-label">MAX WIN</div><div class="max-value" style="color: #28a745;">{b_max_w}</div></div>
+                                <div style="margin: 5px;"><div class="max-label">MAX LOSS</div><div class="max-value" style="color: #dc3545;">{b_max_l}</div></div>
+                                <div style="margin: 5px;"><div class="max-label">WINS</div><div class="max-value" style="color: #28a745;">{b_wins}</div></div>
+                                <div style="margin: 5px;"><div class="max-label">LOSS</div><div class="max-value" style="color: #dc3545;">{b_loss}</div></div>
+                                <div style="margin: 5px;"><div class="max-label">WIN RATE</div><div class="max-value" style="color: #00ffcc;">{(b_wins/(b_wins+b_loss)*100):.2f}%</div></div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
