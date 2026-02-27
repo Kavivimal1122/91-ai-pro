@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd as pd
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 import os
@@ -50,14 +50,28 @@ if 'last_5' not in st.session_state: st.session_state.last_5 = []
 if 'stats' not in st.session_state: 
     st.session_state.stats = {"wins": 0, "loss": 0, "curr_streak": 0, "last_res": None, "max_win": 0, "max_loss": 0}
 
-# --- 4. SHARED TRAINING FUNCTION ---
+# --- 4. SHARED TRAINING FUNCTION (UPDATED HIGH ACCURACY) ---
 def train_ai(file_source):
     df = pd.read_csv(file_source)
     if 'content' in df.columns:
-        for i in range(1, 6): df[f'p{i}'] = df['content'].shift(i)
+        # INCREASED LOOK-BACK: Now looks at 10 previous numbers instead of 5
+        for i in range(1, 11): 
+            df[f'p{i}'] = df['content'].shift(i)
+        
         df = df.dropna()
-        model = GradientBoostingClassifier(n_estimators=500, learning_rate=0.02, max_depth=7, subsample=0.8, random_state=42)
-        model.fit(df[['p1','p2','p3','p4','p5']], df['content'])
+        
+        # INCREASED COMPLEXITY: More estimators and slower learning rate for precision
+        model = GradientBoostingClassifier(
+            n_estimators=1000,   # Increased from 500
+            learning_rate=0.01,  # Slower for better precision
+            max_depth=9,         # Deeper trees to find complex patterns
+            subsample=0.8, 
+            random_state=42
+        )
+        
+        # Update feature list to match the new 10-digit look-back
+        features = [f'p{i}' for i in range(1, 11)]
+        model.fit(df[features], df['content'])
         return model
     return None
 
@@ -66,7 +80,7 @@ if st.session_state.ai_model is None:
     st.title("🤖 AI Initialization")
     qus_path = "Qus.csv"
     if os.path.exists(qus_path):
-        with st.spinner("Training from Qus.csv..."):
+        with st.spinner("Training High-Accuracy Model from Qus.csv..."):
             st.session_state.ai_model = train_ai(qus_path)
             if st.session_state.ai_model:
                 st.success("✅ Auto-Trained from Qus.csv")
@@ -85,13 +99,16 @@ else:
     # MODE A: REAL-TIME DIALER
     if mode == "Real-Time Dialer":
         if not st.session_state.last_5:
-            init_in = st.text_input("Enter 5 digits from Game History", max_chars=5)
+            # Note: Changed prompt to 10 digits to match the new model requirement
+            init_in = st.text_input("Enter 10 digits from Game History", max_chars=10)
             if st.button("START PREDICTION"):
-                if len(init_in) == 5:
+                if len(init_in) == 10:
                     st.session_state.last_5 = [int(d) for d in init_in]
                     pred = st.session_state.ai_model.predict([st.session_state.last_5])[0]
                     st.session_state.next_num, st.session_state.last_pred_size = pred, ("SMALL" if pred <= 4 else "BIG")
                     st.rerun()
+                else:
+                    st.error("Please enter exactly 10 digits for the high-accuracy model.")
         else:
             # Stats Header
             st.markdown(f"""
@@ -156,8 +173,10 @@ else:
                     nums = df_test['content'].tolist()
                     batch_res, b_wins, b_loss, b_curr, b_max_w, b_max_l, b_last = [], 0, 0, 0, 0, 0, None
 
-                    for i in range(5, len(nums)):
-                        feats = [nums[i-1], nums[i-2], nums[i-3], nums[i-4], nums[i-5]]
+                    # Note: Now processing starting from 11th number (needs 10 previous)
+                    for i in range(10, len(nums)):
+                        # Fetch 10 previous numbers for features
+                        feats = [nums[i-j] for j in range(1, 11)]
                         p_num = st.session_state.ai_model.predict([feats])[0]
                         a_num = nums[i]
                         p_sz, a_sz = ("SMALL" if p_num <= 4 else "BIG"), ("SMALL" if a_num <= 4 else "BIG")
@@ -175,7 +194,7 @@ else:
 
                         batch_res.append({"Index": i+1, "Actual": a_num, "AI Pred": f"{p_sz}({p_num})", "Status": status, "Streak": b_curr})
 
-                    # Final output added for Batch Exam Mode as requested
+                    # Stats Display
                     st.markdown(f"""
                         <div class="max-streak-container">
                             <div style="display: flex; justify-content: space-around; align-items: center;">
@@ -186,7 +205,6 @@ else:
                         </div>
                     """, unsafe_allow_html=True)
 
-                    # Display Batch Stats
                     c1, c2, c3 = st.columns(3)
                     c1.metric("WINS", b_wins)
                     c2.metric("LOSS", b_loss)
